@@ -58,6 +58,14 @@ rt, lt, fwd :: Double -> Turtle ()
 rt x = modify (\(ps, p, phi) -> (ps, p, phi - (x * pi / 180)))
 lt x = rt (-x)
 
+penup, pendown :: Turtle ()
+penup = modify (\(ps, p, phi) -> (False, p, phi))
+pendown = modify (\(ps, p, phi) -> (True, p, phi))
+
+pencolor :: Double -> Double -> Double -> Turtle ()
+pencolor r g b = do
+    lift $ print $ setrgbcolor r g b
+
 fwd d = do
     (ps, p@(x,y), phi) <- get
     let p' = (x + d * cos phi, y + d * sin phi)
@@ -125,6 +133,63 @@ flaketree d = do
     go 4 d
             
 
+twig d w n = do
+
+    let linesize s = lift $ print $ double s <+> text "setlinewidth"
+
+    linesize (d/80)
+
+    pencolor 0.4 0.2 0.1
+    fwd (d/10)
+    rt 1
+
+    let needle = do
+            linesize (d/100)
+            r <- lift $ randomRIO (0, 0.3)
+            g <- lift $ randomRIO (0.4, 0.6)
+            b <- lift $ randomRIO (0,g * 0.6)
+
+            l2 <- lift $ randomRIO (0.03,0.11)
+
+            phi <- lift $ randomRIO (-4,4.0)
+
+            pencolor r g b
+            rt phi
+            fwd (w * l2)
+
+    saveturtle $ do
+        replicateM_ 45 $ do
+            saveturtle $ do
+                lt 37
+                needle
+            saveturtle $ do
+                rt 37
+                needle
+            pencolor 0.4 0.2 0.1
+            fwd (d * 0.02)
+            rt 0.3
+
+    when (n > 0) $ do
+        saveturtle $ do
+            penup    
+            replicateM_ 22 $ do
+                fwd (d * 0.02)
+                rt 0.3
+            pendown
+            saveturtle $ do
+                lt 50
+                twig (d * 0.3) (w * 0.6) (n-1)
+            saveturtle $ do
+                rt 50
+                twig (d * 0.4) (w * 0.8) (n-1)
+                
+    linesize (d/100)
+
+    replicateM_ 45 $ do
+        pencolor 0.4 0.2 0.1
+        fwd (d * 0.02)
+        rt 0.3
+    
 runTurtle :: (Double, Double) -> Double -> Turtle a -> IO a
 runTurtle p phi action = evalStateT action (True, p, phi * pi / 180)
 
@@ -140,11 +205,31 @@ makeImage = do
         choice <- randomRIO (0.0:: Double, 1.0)
         phi <- randomRIO (0, 2*pi)
         case choice of
-            _ | (choice < 0.9 || r' > 60) -> do
+            _ | choice < 0.7 -> do
                 let r = r' - 5
                 rratio <- randomRIO (0.4,0.6)
                 color <- starcolor
                 putStrLn $ render $ star (x,y) (r*rratio) r phi color
+            _ | (choice < 0.9 || r' > 60) -> do
+                print gsave
+                putStrLn "1 setlinecap"
+                print $ setrgbcolor 0.0 0.5 0
+                let r = r' -5
+                n0 <- randomRIO (0,2)
+                let n = case n0 of
+                            0 | r' > 30 -> 1
+                            _ -> n0
+                runTurtle (x,y) (phi*180/3.14) $ do
+                    penup
+                    fwd (-r)
+                    pendown
+                    lt 12
+                    -- fwd (1.9*r)                    
+                    twig (1.9*r) (1.9*r) (n::Int)
+                    
+
+                print grestore
+
             _ | otherwise -> do
                 let r = r' - 5
                 print gsave

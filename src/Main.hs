@@ -30,6 +30,46 @@ star c r1 r2 phi1 color = polygon pts $+$ gsaving(color <+> text "fill") <+> tex
         pts = concat $ zipWith (\x y -> [x,y]) (circle c r1 5 phi1) (circle c r2 5 phi2)
         phi2 = phi1 + 2*pi/10
 
+
+comet c r1 r2 phi1 color = polygon (map (add c') pts) $+$ gsaving(color <+> text "fill") <+> text "0 setgray stroke"
+    where
+        c' = c `add` (-r1 * cos phi1 , -r1 * sin phi1)
+        (p1 : p2 : pts') = concat $ zipWith (\x y -> [x,y]) (circle (0,0) r1 5 phi1) (circle (0,0) r2 5 phi2)
+        phi2 = phi1 + 2*pi/10
+        p0 = last pts'
+        
+        pts = curve1 ++ zigzag (last curve1) (last curve2) ++ reverse curve2 ++ p2 : pts'
+
+        basepoint = (mid (wmid p0 p1) (wmid p2 p1))
+        basecurve = curveout (mid (wmid p0 p1) (wmid p2 p1))
+        d = scale (-1) basepoint `add` wmid p2 p1
+
+        shiftscaled d cs = [ scale (1+t) (rot (t*20) d) `add` c | (t,c) <- zip [0,0.1..] cs ]
+
+        curve1 = shiftscaled (scale (-1) d) basecurve
+        curve2 = shiftscaled d basecurve
+
+        zigzag :: (Double,Double) -> (Double,Double) -> [(Double, Double)]
+        zigzag a@(x1,y1) b@(x2,y2) = [ scale (1 - fromIntegral i / fromIntegral n) a `add` scale (fromIntegral i / fromIntegral n) b
+                                        `add` (if odd i then scale (1/fromIntegral n) normal else (0,0))
+                                        | i <- [0..n] ]
+            where
+                n = 4
+                normal@(nx, ny) = (y1-y2, x2-x1)
+
+        curveout start = [ rot (t * 15) (scale (1+3*t) start) | t <- [0, 0.1 .. 1] ]
+
+        rot deg (x,y) = (cos phi * x - sin phi * y, sin phi * x + cos phi * y)
+            where
+                phi = deg * pi / 180
+
+
+        mid (x1,y1) (x2,y2) = ((x1 + x2)/2, (y1 + y2)/2)
+        wmid a b = scale k a `add` scale (1-k) b where k = 0.3
+
+        (x1,y1) `add` (x2,y2) = (x1+x2, y1+y2)
+        scale k (x,y) = (k*x, k*y)
+
 poissonize positions = poissonize1 emptyWorld positions
     where
         poissonize world [] = []
@@ -205,7 +245,12 @@ makeImage = do
         choice <- randomRIO (0.0:: Double, 1.0)
         phi <- randomRIO (0, 2*pi)
         case choice of
-            _ | choice < 0.7 -> do
+            _ | choice < 0.2 && r' > 40 -> do
+                let r = r' / 2
+                rratio <- randomRIO (0.4,0.6)
+                color <- starcolor
+                putStrLn $ render $ comet (x,y) (r*rratio) r phi color
+            _ | choice < 0.6 -> do
                 let r = r' - 5
                 rratio <- randomRIO (0.4,0.6)
                 color <- starcolor
@@ -214,7 +259,7 @@ makeImage = do
                 print gsave
                 putStrLn "1 setlinecap"
                 print $ setrgbcolor 0.0 0.5 0
-                let r = r' -5
+                let r = r' -- -5
                 n0 <- randomRIO (0,2)
                 let n = case n0 of
                             0 | r' > 30 -> 1

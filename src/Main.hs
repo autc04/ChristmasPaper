@@ -250,7 +250,7 @@ makeImage = do
                 rratio <- randomRIO (0.4,0.6)
                 color <- starcolor
                 putStrLn $ render $ comet (x,y) (r*rratio) r phi color
-            _ | choice < 0.6 -> do
+            _ | choice < 0.3 -> do
                 let r = r' - 5
                 rratio <- randomRIO (0.4,0.6)
                 color <- starcolor

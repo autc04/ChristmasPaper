@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint.HughesPJ as PP
 import System.Random
 import Control.Applicative
 import Control.Monad
@@ -30,6 +30,7 @@ star c r1 r2 phi1 color = polygon pts $+$ gsaving(color <+> text "fill") <+> tex
         pts = concat $ zipWith (\x y -> [x,y]) (circle c r1 5 phi1) (circle c r2 5 phi2)
         phi2 = phi1 + 2*pi/10
 
+drawcircle c r n color stroke = polygon (circle c r n 0) $+$ gsaving(color <+> text "fill") <+> if stroke then text "0 setgray stroke" else PP.empty
 
 comet c r1 r2 phi1 color = polygon (map (add c') pts) $+$ gsaving(color <+> text "fill") <+> text "0 setgray stroke"
     where
@@ -88,6 +89,24 @@ starcolor = do
     g <- randomRIO (r - 0.17, r - 0.1)
     b <- randomRIO (0.2, g/2)
     return $ setrgbcolor r g b
+
+spherecolor = do
+    -- return $ setrgbcolor 1 0 0
+    choice <- randomRIO (0.0 :: Double, 1.0)
+    (hue, v) <- (\(m,v) -> m >>= return . (,v)) $ case choice of
+        _ | choice < 0.5 -> ((\x -> x * x) <$> randomRIO (0, 0.75), 1)
+        _ | choice < 0.7 -> (randomRIO (1.7, 2.3), 0.5)
+        _ -> (randomRIO (3.7, 4.5), 1)
+    let i = floor hue :: Int
+        f = hue - fromIntegral i
+        (r, g, b) = case i `mod` 6 of
+            0 -> (1, f, 0)
+            1 -> (1-f, 1, 0)
+            2 -> (0, 1, f)
+            3 -> (0, 1-f, 1)
+            4 -> (f, 0, 1)
+            5 -> (1, 0, 1-f)
+    return $ setrgbcolor (v*r) (v*g) (v*b)
 
 data Object = Star | Snowflake deriving(Enum)
 
@@ -245,16 +264,23 @@ makeImage = do
         choice <- randomRIO (0.0:: Double, 1.0)
         phi <- randomRIO (0, 2*pi)
         case choice of
-            _ | choice < 0.2 && r' > 40 -> do
+            _ | choice < 0.1 && r' < 20 -> do
+                let r = r' - 5
+                color <- spherecolor
+                putStrLn $ render $ drawcircle (x,y) r 50 color True
+                putStrLn $ render $ drawcircle (x-r/3,y+r/3) (r/6) 25 (setrgbcolor 1 1 1) False
+                putStrLn $ render $ polygon [(x-0.2*r,y+0.85*r), (x+0.2*r, y+0.85*r), (x+0.2*r, y+1.15*r), (x-0.2*r, y+1.15*r)] $+$ gsaving((setrgbcolor 1 0.8 0) <+> text "fill") <+> text "0 setgray stroke"
+            _ | choice < 0.25 && r' > 40 -> do
                 let r = r' / 2
                 rratio <- randomRIO (0.4,0.6)
                 color <- starcolor
                 putStrLn $ render $ comet (x,y) (r*rratio) r phi color
-            _ | choice < 0.3 -> do
+            _ | choice < 0.35 -> do
                 let r = r' - 5
                 rratio <- randomRIO (0.4,0.6)
                 color <- starcolor
                 putStrLn $ render $ star (x,y) (r*rratio) r phi color
+
             _ | (choice < 0.9 || r' > 60) -> do
                 print gsave
                 putStrLn "1 setlinecap"

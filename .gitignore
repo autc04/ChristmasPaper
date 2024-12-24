@@ -2,3 +2,5 @@
 .stack-work
 old
 out.ps
+.direnv
+dist-newstyle

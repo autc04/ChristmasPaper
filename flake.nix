@@ -10,14 +10,10 @@
   outputs = inputs@{ nixpkgs, flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = nixpkgs.lib.systems.flakeExposed;
-      imports =
-        [ inputs.haskell-flake.flakeModule ];
+      imports = [ inputs.haskell-flake.flakeModule ];
       perSystem = { self', config, pkgs, ... }: {
-        haskellProjects.default = {
-          packages.ChristmasPaper.root = ./.;
-
-        };
-          packages.default = self'.packages.ChristmasPaper;
+        haskellProjects.default = { };
+        packages.default = self'.packages.ChristmasPaper;
       };
     };
 }
